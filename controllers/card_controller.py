@@ -1,4 +1,5 @@
 from datetime import date
+import functools
 
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -10,6 +11,23 @@ from controllers.comment_controller import comments_bp
 
 cards_bp = Blueprint('cards', __name__, url_prefix='/cards')
 cards_bp.register_blueprint(comments_bp)
+
+def authorise_as_admin(fn):
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        user_id = get_jwt_identity()
+        stmt = db.select(User).filter_by(id=user_id)
+        user = db.session.scalar(stmt)
+        # if the user is an admin
+        if user.is_admin:
+            # we will continue and run the decorated function
+            return fn(*args, **kwargs)
+        # else (if the user is not an admin)
+        else:
+            # return an error
+            return {"error": "Not authorised to delete a card"}, 403
+        
+    return wrapper
 
 # http://localhost:8080/cards - GET
 @cards_bp.route('/')
@@ -53,11 +71,12 @@ def create_card():
 # https://localhost:8080/cards/6 - DELETE
 @cards_bp.route('/<int:card_id>', methods=["DELETE"])
 @jwt_required()
+@authorise_as_admin
 def delete_card(card_id):
-    # Check users admin statu
-    is_admin = is_user_admin()
-    if not is_admin:
-        return {"error": "Not authorised to delete a card"}, 403
+    # Check users admin status
+    # is_admin = is_user_admin()
+    # if not is_admin:
+    #    return {"error": "Not authorised to delete a card"}, 403
     # get the card from the db with id = card_id
     stmt = db.select(Card).where(Card.id == card_id)
     card = db.session.scalar(stmt)
