@@ -118,8 +118,9 @@ def update_card(card_id):
     else:
         # return error msg
         return {'error': f'Card with id {card_id} not found'}, 404
-    
 
+   
+# This decorator has been replaced by the authorise_as_admin decorator
 def is_user_admin():
     user_id = get_jwt_identity()
     stmt = db.select(User).filter_by(id=user_id)
